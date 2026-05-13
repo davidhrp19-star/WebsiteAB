@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artotel Batam Vendor Management</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-6">
+
+<div class="max-w-7xl mx-auto">
+
+  <div class="bg-white rounded-3xl shadow-xl p-6 mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+      <div>
+        <h1 class="text-4xl font-bold text-slate-800">Artotel Batam Vendor Management</h1>
+        <p class="text-slate-500 mt-2">Artotel Batam</p>
+      </div>
+
+      <button onclick="exportExcel()"
+        class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-bold">
+        Export Excel
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <div class="bg-white rounded-3xl shadow-xl p-6">
+      <h2 class="text-2xl font-bold mb-5">Form Vendor</h2>
+
+      <form id="vendorForm" class="space-y-4">
+
+        <input type="hidden" id="editIndex">
+
+        <input type="text" id="company" placeholder="Nama Vendor"
+          class="w-full border p-3 rounded-2xl">
+
+        <select id="category" class="w-full border p-3 rounded-2xl">
+          <option value="">Pilih Kategori</option>
+          <option>Food Supplier</option>
+          <option>Laundry</option>
+          <option>Cleaning Service</option>
+          <option>Maintenance</option>
+          <option>IT Support</option>
+          <option>Event Organizer</option>
+        </select>
+
+        <input type="text" id="contact" placeholder="PIC / Contact Person"
+          class="w-full border p-3 rounded-2xl">
+
+        <input type="text" id="phone" placeholder="Nomor Telepon"
+          class="w-full border p-3 rounded-2xl">
+
+        <input type="email" id="email" placeholder="Email"
+          class="w-full border p-3 rounded-2xl">
+
+        <textarea id="address" placeholder="Alamat"
+          class="w-full border p-3 rounded-2xl h-24"></textarea>
+
+        <select id="status" class="w-full border p-3 rounded-2xl">
+          <option>Active</option>
+          <option>Pending</option>
+          <option>Blacklist</option>
+        </select>
+
+        <textarea id="notes" placeholder="Catatan"
+          class="w-full border p-3 rounded-2xl h-24"></textarea>
+
+        <button type="submit"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl font-bold">
+          Simpan Vendor
+        </button>
+
+      </form>
+    </div>
+
+    <div class="lg:col-span-2 bg-white rounded-3xl shadow-xl p-6 overflow-auto">
+
+      <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h2 class="text-2xl font-bold">List Vendor Hotel</h2>
+
+        <input type="text" id="search" placeholder="Cari Vendor..."
+          class="border p-3 rounded-2xl w-full md:w-72"
+          onkeyup="renderTable()">
+      </div>
+
+      <table class="w-full border-collapse overflow-hidden rounded-2xl">
+        <thead>
+          <tr class="bg-slate-200 text-left">
+            <th class="p-4">Vendor</th>
+            <th class="p-4">Kategori</th>
+            <th class="p-4">PIC</th>
+            <th class="p-4">Telepon</th>
+            <th class="p-4">Status</th>
+            <th class="p-4 text-center">Aksi</th>
+          </tr>
+        </thead>
+
+        <tbody id="vendorTable"></tbody>
+      </table>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+let vendors = JSON.parse(localStorage.getItem('vendors')) || [];
+
+const form = document.getElementById('vendorForm');
+const vendorTable = document.getElementById('vendorTable');
+
+function saveLocal() {
+  localStorage.setItem('vendors', JSON.stringify(vendors));
+}
+
+function renderTable() {
+
+  const search = document.getElementById('search').value.toLowerCase();
+
+  vendorTable.innerHTML = '';
+
+  const filtered = vendors.filter(v =>
+    v.company.toLowerCase().includes(search) ||
+    v.category.toLowerCase().includes(search) ||
+    v.contact.toLowerCase().includes(search)
+  );
+
+  if(filtered.length === 0){
+    vendorTable.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center p-8 text-slate-500">
+          Belum ada data vendor
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  filtered.forEach((vendor, index) => {
+
+    vendorTable.innerHTML += `
+      <tr class="border-b hover:bg-slate-50">
+
+        <td class="p-4 font-semibold">${vendor.company}</td>
+        <td class="p-4">${vendor.category}</td>
+        <td class="p-4">${vendor.contact}</td>
+        <td class="p-4">${vendor.phone}</td>
+        <td class="p-4">${vendor.status}</td>
+
+        <td class="p-4 text-center">
+          <button onclick="editVendor(${index})"
+            class="bg-blue-500 text-white px-4 py-2 rounded-xl mr-2">
+            Edit
+          </button>
+
+          <button onclick="deleteVendor(${index})"
+            class="bg-red-500 text-white px-4 py-2 rounded-xl">
+            Hapus
+          </button>
+        </td>
+
+      </tr>
+    `;
+  });
+}
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+
+  const vendor = {
+    company: document.getElementById('company').value,
+    category: document.getElementById('category').value,
+    contact: document.getElementById('contact').value,
+    phone: document.getElementById('phone').value,
+    email: document.getElementById('email').value,
+    address: document.getElementById('address').value,
+    status: document.getElementById('status').value,
+    notes: document.getElementById('notes').value,
+  };
+
+  const editIndex = document.getElementById('editIndex').value;
+
+  if(editIndex === ''){
+    vendors.push(vendor);
+  } else {
+    vendors[editIndex] = vendor;
+  }
+
+  saveLocal();
+  renderTable();
+  form.reset();
+  document.getElementById('editIndex').value = '';
+});
+
+function editVendor(index){
+
+  const vendor = vendors[index];
+
+  document.getElementById('company').value = vendor.company;
+  document.getElementById('category').value = vendor.category;
+  document.getElementById('contact').value = vendor.contact;
+  document.getElementById('phone').value = vendor.phone;
+  document.getElementById('email').value = vendor.email;
+  document.getElementById('address').value = vendor.address;
+  document.getElementById('status').value = vendor.status;
+  document.getElementById('notes').value = vendor.notes;
+
+  document.getElementById('editIndex').value = index;
+}
+
+function deleteVendor(index){
+
+  if(confirm('Yakin ingin menghapus vendor ini?')){
+    vendors.splice(index,1);
+    saveLocal();
+    renderTable();
+  }
+}
+
+function exportExcel(){
+
+  const worksheet = XLSX.utils.json_to_sheet(vendors);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Vendor Hotel');
+
+  XLSX.writeFile(workbook, 'vendor_hotel.xlsx');
+}
+
+renderTable();
+
+</script>
+
+</body>
+</html>
